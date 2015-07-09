@@ -11,5 +11,6 @@ and activate it in the ILIAS-Admin-GUI.
 
 ### Credits ###
  Developing plugin for ILIAS 4.4 by Christoph Jobst, University Leipzig 2015
+ 
  This Project uses PHPExcel. See [PHPExcel GitHub](https://github.com/PHPOffice/PHPExcel) and the [PHPExcel Homepage](https://phpexcel.codeplex.com/), License: GNU LGPL
  

@@ -28,7 +28,7 @@ class ilTestStatisticsExportPlugin extends ilTestExportPlugin
 	 */
 	protected function getFormatIdentifier()
 	{
-		return 'teststatistics.csv';
+		return 'statistics.xlsx';
 	}
 
 	/**
@@ -44,7 +44,42 @@ class ilTestStatisticsExportPlugin extends ilTestExportPlugin
 	 */
 	protected function buildExportFile(ilTestExportFilename $filename)
 	{
+		//Creating Files with Charts using PHPExcel
+		
+		require_once './Customizing/global/plugins/Modules/Test/Export/TestStatisticsExport/classes/PHPExcel-1.8/Classes/PHPExcel.php';
+		require_once './Customizing/global/plugins/Modules/Test/Export/TestStatisticsExport/classes/PHPExcel-1.8/Classes/PHPExcel/Writer/Excel2007.php';
+				
+		// Create new PHPExcel object
+		$objPHPExcel = new PHPExcel();
 
+		//CONTENT #######################################################################################
+		
+		// Set properties
+		$objPHPExcel->getProperties()->setCreator("Chris");
+		$objPHPExcel->getProperties()->setLastModifiedBy("Chris");
+		$objPHPExcel->getProperties()->setTitle("Office 2007 XLSX  Document");
+		$objPHPExcel->getProperties()->setSubject("Office 2007 XLSX  Document");
+		$objPHPExcel->getProperties()->setDescription("XSLX Document for Office 2007, generated using PHPExcel.");
+		
+		// Add data
+		$objPHPExcel->setActiveSheetIndex(0);
+		$objPHPExcel->getActiveSheet()->SetCellValue('A1', 'Hello');
+		$objPHPExcel->getActiveSheet()->SetCellValue('B2', 'world!');
+		$objPHPExcel->getActiveSheet()->SetCellValue('C1', 'Hello');
+		$objPHPExcel->getActiveSheet()->SetCellValue('D2', 'world!');
+		
+		// Rename sheet
+		$objPHPExcel->getActiveSheet()->setTitle('Simple');
+
+		//END CONTENT #######################################################################################
+		
+		// Save Excel 2007 file		
+		ilUtil::makeDirParents(dirname($filename->getPathname('xls', 'statistics')));
+		$objWriter = new PHPExcel_Writer_Excel2007($objPHPExcel);
+		$objWriter->save(str_replace(__FILE__, $filename->getPathname('xlsx', 'statistics'),__FILE__));
+
+		//PEAR Spreadsheet - ILIAS internal Excelgenerator
+		/*
 		require_once './Services/Excel/classes/class.ilExcelWriterAdapter.php';
 		
 		ilUtil::makeDirParents(dirname($filename->getPathname('xls', 'statistics')));
@@ -76,5 +111,6 @@ class ilTestStatisticsExportPlugin extends ilTestExportPlugin
 		
 		// Let's send the file
 		$workbook->close();
+		*/
 	}
 }
