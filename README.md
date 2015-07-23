@@ -1,6 +1,6 @@
 # IN DEVELOPMENT - ILIAS 4.4+ Teststatistics - Export Plugin for Tests #
 
-###  creates a xls-file with teststatistics (Item-total correlation, difficulty, distractoranalysis)###
+###  creates a xlsx-file with teststatistics (Item-total correlation, difficulty, distractoranalysis)###
  
 ### Usage ###
 
