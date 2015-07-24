@@ -689,12 +689,103 @@ class ilTestStatisticsExportPlugin extends ilTestExportPlugin {
 			$writeColumn++;
 			$writeColumn++;
 			$writeColumn++;
-			$writeRow = $lastRowOfRawData+8;;
+			$writeRow = $lastRowOfRawData+8;
 		}
 		
+		//error_log('Spaltenende für TS ist vor ' . $writeColumn);
+		$stopColumn = $writeColumn;
+		
 		//Summenberechnungen für die Trennschärfe
-		for($column = 'H'; $column != ($lastDataColumnCopy); $column ++) {
+		$writeRow = $lastRowOfRawData + 8 + count($gesamtpunktzahlenUnique);
+		$objWorksheet->setCellValue ( 'A' . $writeRow, 'Summen -> ' );
+		
+		for($column = 'B'; $column != $stopColumn; $column ++) {
+			$cell = $objWorksheet->getCell ( $column . $writeRow );
+			
+			$value = 0;
+			for ($row = ($lastRowOfRawData + 8); $row < $writeRow ; $row++) {
+				$value += $objWorksheet->getCell( $column . $row)->getValue();
+			}
+			
+			$cell->setValue ($value);
+			//$cell->setValue ('=SUM(' . $column . ($lastRowOfRawData + 8) . ':' . $column . ($writeRow -1) . ')' );
+		}
+		
+		//Eigentliche Formel für die Trennschärfe implementieren pro Aufgabe
+		$writeRow++;
+		$objWorksheet->setCellValue ( 'A' . $writeRow, 'Trennschärfe -> ' );
+		
+		//Allgemeine Daten
+		$f = $objWorksheet->getCell( 'B' . ($writeRow-1))->getValue();
+		$fX = $objWorksheet->getCell( 'C' . ($writeRow-1))->getValue();
+		$fX2 = $objWorksheet->getCell( 'D' . ($writeRow-1))->getValue();
+
+		/*
+		error_log($f);
+		error_log($fX);
+		error_log($fX2);
+		*/
+		
+		$resultcolumn;
+		for($column = 'E'; $column != $stopColumn; $column ++) {
+			//error_log('Eingang: ' . $column);
+			$resultcolumn = $column;
+			
+			//Aufgabenspezifisch
+			$fr = $objWorksheet->getCell( $column . ($writeRow-1))->getValue();
+			$column++;
+			$frX = $objWorksheet->getCell($column . ($writeRow-1))->getValue();
+			$column++;
+			$fb = $objWorksheet->getCell($column . ($writeRow-1))->getValue();
+			$column++;
+			$fbX = $objWorksheet->getCell($column . ($writeRow-1))->getValue();
+			$column++;
+			$fbX2 = $objWorksheet->getCell($column . ($writeRow-1))->getValue();
+			$column++;
+			$ffa = $objWorksheet->getCell($column . ($writeRow-1))->getValue();
+			$column++;
+			$fu = $objWorksheet->getCell($column . ($writeRow-1))->getValue();
+			
+			//error_log('Ausgang: ' . $column);
 				
+			/*
+			error_log($fr);
+			error_log($frX);
+			error_log($fb);
+			error_log($fbX);
+			error_log($fbX2);
+			error_log($ffa);
+			error_log($fu);
+			*/
+
+			$cell = $objWorksheet->getCell ( $resultcolumn . $writeRow );
+			//$cell->setValue ('=SUM(' . $column . ($lastRowOfRawData + 8) . ':' . $column . ($writeRow -1) . ')' );
+			
+			/*
+			 * OHNE Berücksichtung nicht bearbeiteter Aufgaben
+			 */
+			/*
+			$produkt1 = ($frX / $fr) - ($fX / $f);				
+			$produkt2 = sqrt($fr/($f-$fr));
+			$produkt3 = $f/(sqrt($f*$fX2-($fX*$fX)));
+			$cell->setValue($produkt1 * $produkt2 * $produkt3);
+			*/
+			
+			/*
+			 * MIT Berücksichtigung nicht bearbeiteter Aufgaben
+			 */
+			$produkt1 = ($frX / $fr) - ($fbX / $fb);
+			$produkt2 = sqrt($fr/($fb-$fr));
+			$produkt3 = sqrt($fb * ($fb-1)) / (sqrt($f*$fbX2-($fX*$fbX)));
+			
+			error_log($produkt1 . ' ' . $produkt2 . ' ' . $produkt3);
+			$cell->setValue($produkt1 * $produkt2 * $produkt3);
+			
+		}
+		
+		
+		
+		
 		
 		
 		
