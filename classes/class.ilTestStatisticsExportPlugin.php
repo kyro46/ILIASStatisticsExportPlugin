@@ -57,10 +57,7 @@ class ilTestStatisticsExportPlugin extends ilTestExportPlugin {
 		
 		// Create the second sheet, with questionspecific data
 		$objPHPExcel->addSheet ( $this->createRawDataDifficulty () );
-		
-		// Create the third sheet, with questionspecific data for discrimination index
-		$objPHPExcel->addSheet ( $this->createDiscriminationIndex () );
-		
+
 		// Save XSLX file
 		ilUtil::makeDirParents ( dirname ( $filename->getPathname ( 'xlsx', 'statistics' ) ) );
 		$objWriter = PHPExcel_IOFactory::createWriter ( $objPHPExcel, 'Excel2007' );
@@ -378,7 +375,8 @@ class ilTestStatisticsExportPlugin extends ilTestExportPlugin {
 		
 		$lastRowOfRawData = $objWorksheet->getHighestRow ();
 		$lastDataColumn = $objWorksheet->getHighestColumn ();
-		//error_log('Last Column: ' . $lastDataColumn);
+		
+		$lastDataColumnCopy = $lastDataColumn;
 		
 		//Zeile für maximal erreichbare Punktzahl der Aufgabe
 		$objWorksheet->setCellValue ( 'G' . ($lastRowOfRawData + 1), 'Maximale Aufgabenpunkte' );
@@ -387,8 +385,8 @@ class ilTestStatisticsExportPlugin extends ilTestExportPlugin {
 		//Zeile für die Anzahl nicht angezeigter Aufgaben
 		$objWorksheet->setCellValue ( 'G' . ($lastRowOfRawData + 2), 'Nicht angezeigte Aufgaben' );
 		$notShownItems = array();
-		$lastDataColumn ++; // Damit die letzte Spalte auch einbezogen wird
-		for($column = 'H'; $column != ($lastDataColumn); $column ++) {
+		$lastDataColumnCopy ++; // Damit die letzte Spalte auch einbezogen wird
+		for($column = 'H'; $column != ($lastDataColumnCopy); $column ++) {
 			// Anzahl nicht dargestellter Aufgaben ermitteln
 			$countNotShown = 0;
 			for($row = 2; $row <= $lastRowOfRawData; ++ $row) {
@@ -407,9 +405,9 @@ class ilTestStatisticsExportPlugin extends ilTestExportPlugin {
 		
 		//Schwierigkeitsindex
 		$writeRow = $lastRowOfRawData + 3;
-		// schon für Anzahl ausgelassener Aufgaben getan: $lastDataColumn ++;
+		// schon für Anzahl ausgelassener Aufgaben getan: $lastDataColumnCopy ++;
 		$objWorksheet->setCellValue ( 'G' . $writeRow, 'Schwierigkeitsindex' );
-		for($column = 'H'; $column != ($lastDataColumn); $column ++) {
+		for($column = 'H'; $column != ($lastDataColumnCopy); $column ++) {
 			/*
 			 * Schwierigkeitsindex ermitteln, dabei max. erreichbare Punktzahl und Beantwortugnsstatus nutzen 
 			 * Formel nach Lienert 1994, Seite 76, Formel 6.4, modifiziert für Teilpunkte
@@ -450,39 +448,263 @@ class ilTestStatisticsExportPlugin extends ilTestExportPlugin {
 		 * Unter Beachtung eventuell unvollstaendiger Aufgabenbearbeitung
 		 * Formel nach Lienert 1994, S.82, Formel 6.12, modifiziert für Teilpunkte
 		 * 
-		 * -> Kommt aufgrund der umfangreichen Vortabelle in ein separates Worksheet
 		 */
+		$questions = $this->getTest ()->getQuestions ();
+
+		//Erste Titelzeile
+		$headerrow1 = array ();
+		array_push ( $headerrow1, 'Gesamtpunktzahl' );
+		array_push ( $headerrow1, 'TN die den jeweilige Punktzahl erreicht haben' );
+		array_push ( $headerrow1, ' ' );
+		array_push ( $headerrow1, ' ' );
+		
+		$counter = 7;
+		foreach ( $questions as $question ) {
+		
+			$title = $objWorksheet->getCellByColumnAndRow($counter, 1)->getValue();
+				
+			array_push ( $headerrow1, 'TN Aufgabe ' . $title . ' richtig' );
+			array_push ( $headerrow1, ' ' );
+		
+			array_push ( $headerrow1, 'TN Aufgabe ' . $title . ' bearbeitet' );
+			array_push ( $headerrow1, ' ' );
+			array_push ( $headerrow1, ' ' );
+		
+			array_push ( $headerrow1, 'TN Aufgabe ' . $title . ' falsch oder nicht erreicht' );
+			array_push ( $headerrow1, ' ' );
+			
+			$counter++;
+		}
+		$objWorksheet->fromArray ( $headerrow1 , null, 'A'.($lastRowOfRawData+6), true );
+		
+		//Zweite Titelzeile
+		$headerrow2 = array ();
+		array_push ( $headerrow2, 'X' );
+		array_push ( $headerrow2, 'f' );
+		array_push ( $headerrow2, 'fX' );
+		array_push ( $headerrow2, 'fX^2' );
+		
+		$counter = 7;
+		foreach ( $questions as $question ) {
+		
+			$title = $objWorksheet->getCellByColumnAndRow($counter, 1)->getValue();
+		
+			array_push ( $headerrow2, 'f.r' );
+			array_push ( $headerrow2, 'f.rX' );
+		
+			array_push ( $headerrow2, 'f.b' );
+			array_push ( $headerrow2, 'f.bX' );
+			array_push ( $headerrow2, 'f.bX^2' );
+		
+			array_push ( $headerrow2, 'f.f, f.a' );
+			array_push ( $headerrow2, 'f.u' );
+				
+			$counter++;
+		}
+		$objWorksheet->fromArray ( $headerrow2 , null, 'A'.($lastRowOfRawData+7), true );
+		
+		//error_log($lastRowOfRawData);
+		
+		//Erste Spalte der Trennschärfenberechnung
+		//Verschiedene erreichte Gesamtpunktzahlen	
+		// X
+		$gesamtpunktzahlen = array();	
+		for ($i = 2; $i<=$lastRowOfRawData; $i++) {
+			array_push ( $gesamtpunktzahlen , $objWorksheet->getCell( 'A'.$i)->getValue());
+		}
+		$gesamtpunktzahlenUnique = array_unique($gesamtpunktzahlen);
+		asort($gesamtpunktzahlenUnique);
+		
+		$counter = $lastRowOfRawData+8;
+		foreach ($gesamtpunktzahlenUnique as $points) {
+			$cell = $objWorksheet->getCell ( 'A' . $counter );
+			$cell->setValue ($points);
+			$counter++;
+		}
+		 
+		//Zweite Spalte der Trennschärfeberechnung
+		//Anzahl der Pbn, die eine bestimmte Punktzahl erreicht haben
+		// f
+		$anzahlProKriteriumwert = array();
+		foreach ($gesamtpunktzahlenUnique as $kriterienwert) {
+			$count = 0;
+			foreach ($gesamtpunktzahlen as $punktzahlEinesPbn) {
+				if($kriterienwert == $punktzahlEinesPbn) {
+					$count++;
+				}
+			}
+			array_push( $anzahlProKriteriumwert, $count);
+		}
+		
+		$counter = $lastRowOfRawData+8;
+		foreach ($anzahlProKriteriumwert as $anzahl) {
+			$cell = $objWorksheet->getCell ( 'B' . $counter );
+			$cell->setValue ($anzahl);
+			$counter++;
+		}
+		
+		//Dritte Spalte der Trennschärfeberechnung
+		//Produkt der Anzahl Probanden mit dem Kriterienwert
+		//fX
+		$counter = $lastRowOfRawData+8;
+		foreach (array_combine($gesamtpunktzahlenUnique, $anzahlProKriteriumwert) as $gesamtzahl => $anzahl) {
+			$cell = $objWorksheet->getCell ( 'C' . $counter );
+			$cell->setValue ($gesamtzahl * $anzahl);
+			$counter++;
+		}
+		
+		//Vierte Spalte der Trennschärfeberechnung
+		//Produkt der Anzahl Probanden mit dem Quadrate des Kriterienwertes
+		//f(X^2)
+		$counter = $lastRowOfRawData+8;
+		foreach (array_combine($gesamtpunktzahlenUnique, $anzahlProKriteriumwert) as $gesamtzahl => $anzahl) {
+			$cell = $objWorksheet->getCell ( 'D' . $counter );
+			$cell->setValue (($gesamtzahl * $gesamtzahl) * $anzahl);
+			$counter++;
+		}	
+		
+		//Erste Spalte der Aufgabenspezifischen Trennschärfeberechnung
+		//Alle drei Spalten pro Aufgabe wiederholen -> Startspalte Column + 7 = neue Startspalte
+		//Anzahl Pbn, die die Aufgabe korrekt gelöst haben (>=50% der Punkte erhalten haben)
+		
+		/* Ablauf:
+		 * 1. Spalte für eine Aufgabe einlesen als Array
+		 * Spalten von H bis maxDataColumn durchlaufen, pro Spalte Array mit Punktwerten bilden
+		 * 	Array durchlaufen und mit 0.5 * $maximumPoints vergleichen, 
+		 * 		wenn größer -> Richtitg-counter++, Gesehen-counter++
+		 * 		wenn kleiner -> Falsch-counter++, Gesehen-counter++
+		 * 		wenn Arraywert null oder '' -> NichtGesehenCounter++
+		 * 
+		 * A.x einbeziehen, Erreichte Punktzahl, damit in korrekte Spalte einsortiert
+		 */
+		$lastDataColumnCopy = $lastDataColumn;
+		$lastDataColumnCopy++;
+		
+		$writeColumn = 'E'; //für das Eintragen in die Trennschärfentabelle zum Iterieren benötigt
+		$writeRow = $lastRowOfRawData+8;
+		for($column = 'H'; $column != ($lastDataColumnCopy); $column ++) {
+			//error_log('Betrete Aufgabenspalte: ' . $column);
+					
+			foreach ($gesamtpunktzahlenUnique as $gesamtpunkte) {
+				//error_log(' Betrachte Gesamtpunktzahl: '. $gesamtpunkte);
+				
+				$itemCount = 0;
+				
+				$countCorrect = 0;
+				$countWrong = 0;
+				$countSeen = 0;
+				$countNotSeen = 0;
+
+				for ($row = 2; $row <= $lastRowOfRawData; $row++) {
+					$gesamtpunkteOriginal = $objWorksheet->getCell( 'A' . $row)->getValue();
+					
+					//error_log($gesamtpunkte . ' vergleichen mit '. $gesamtpunkteOriginal);
+					
+					if ($gesamtpunkteOriginal == $gesamtpunkte) {
+						//error_log('Habe hier was gefunden');
+						
+						$itemCount++;
+							
+						$value = $objWorksheet->getCell( $column . $row)->getValue();
+						//$value = $objWorksheet->getCell( 'I' . $row)->getValue();
+							
+	
+						if ($value === NULL || $value === '') {
+							$countNotSeen++;
+						} elseif ($value >= (0.5 * $maximumPoints[($itemCount-1)])){
+							$countCorrect++;
+							$countSeen++;
+						} elseif ($value < (0.5 * $maximumPoints[($itemCount-1)])){
+							$countWrong++;
+							$countSeen++;
+						}
+						$itemCount++;
+					}	
+				}
+				//error_log(' Für Punktzahl ' . $gesamtpunkte . ' in Spalte ' . $column . ': ' . $countCorrect.' '.$countWrong.' - '.$countSeen.' '.$countNotSeen);
+
+				/*
+				 * Nun die counter pro Aufgabe in die Spalten der Trennschärfentabelle eintragen
+				* Abstände
+				* Erstes f.r für Spalte H ist in E:$lastRowOfRawData+8
+				* Dann f.rX   in F
+				* Dann f.b    in G
+				* Dann f.bX   in H
+				* Dann f.bX^2 in I
+				* Dann ff,fa  in J
+				* Dann f.u    in K
+				*
+				* Dann von VORN -> Columniterator + 7 und mit nächster Aufgabe fortfahren
+				*/
+				
+				$writeColumnInner = $writeColumn;
+				$x = $objWorksheet->getCellByColumnAndRow('A', $writeRow)->getValue();
+				
+				//f.r
+				$cell = $objWorksheet->getCell ( $writeColumnInner . $writeRow );
+				$cell->setValue ($countCorrect);
+				
+				//f.rX
+				$writeColumnInner++;
+				$cell = $objWorksheet->getCell ( $writeColumnInner . $writeRow );
+				$cell->setValue ($countCorrect * $x);
+				
+				//f.b
+				$writeColumnInner++;
+				$cell = $objWorksheet->getCell ( $writeColumnInner . $writeRow );
+				$cell->setValue ($countSeen);
+				
+				//f.bX
+				$writeColumnInner++;
+				$cell = $objWorksheet->getCell ( $writeColumnInner . $writeRow );
+				$cell->setValue ($countSeen * $x);
+				
+				//f.bX^2
+				$writeColumnInner++;
+				$cell = $objWorksheet->getCell ( $writeColumnInner . $writeRow );
+				$cell->setValue ($countSeen * ($x * $x));
+				
+				//f.f, f.a
+				$writeColumnInner++;
+				$cell = $objWorksheet->getCell ( $writeColumnInner . $writeRow );
+				$cell->setValue ($countWrong);
+
+				//f.u
+				$writeColumnInner++;
+				$cell = $objWorksheet->getCell ( $writeColumnInner . $writeRow );
+				$cell->setValue ($countNotSeen);
+				
+				//error_log('Bin bei Punktzahl: ' . $gesamtpunkte . ' und Spalte ' . $writeColumnInner);
+					
+
+				//error_log('Spalte zurückgesetzt auf: ' . $writeColumn);
+				$writeRow++;
+				
+			}
+			
+			$writeColumn++;
+			$writeColumn++;
+			$writeColumn++;
+			$writeColumn++;
+			$writeColumn++;
+			$writeColumn++;
+			$writeColumn++;
+			$writeRow = $lastRowOfRawData+8;;
+		}
+		
+		//Summenberechnungen für die Trennschärfe
+		for($column = 'H'; $column != ($lastDataColumnCopy); $column ++) {
+				
+		
+		
+		
+		
 		
 		//Breite der Spalten automatisch anpassen
 		foreach ( range ( 'A', $objWorksheet->getHighestColumn () ) as $columnID ) {
 			$objWorksheet->getColumnDimension ( $columnID )->setAutoSize ( true );
 		}
 		
-		// $objWorksheet->setCellValue('A2' , 'mc');
 		return $objWorksheet;
 	}
-	
-	/**
-	 * creates another worksheet
-	 *
-	 * @return PHPExcel_Worksheet objWorksheet
-	 */
-	public function createDiscriminationIndex() {
-		$objWorksheet = new PHPExcel_Worksheet ( $objPHPExcel );
-		$objWorksheet->setTitle ( 'Trennschaerfeindex' );
-		
-		
-		
-		
-		//Breite der Spalten automatisch anpassen
-		foreach ( range ( 'A', $objWorksheet->getHighestColumn () ) as $columnID ) {
-			$objWorksheet->getColumnDimension ( $columnID )->setAutoSize ( true );
-		}
-		
-		return $objWorksheet;
-	}
-	
-	
-	
-	
 }
