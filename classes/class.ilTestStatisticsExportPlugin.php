@@ -529,6 +529,8 @@ class ilTestStatisticsExportPlugin extends ilTestExportPlugin {
 		foreach ($gesamtpunktzahlenUnique as $kriterienwert) {
 			$count = 0;
 			foreach ($gesamtpunktzahlen as $punktzahlEinesPbn) {
+				//error_log('Kriterienwert Unique: ' .$kriterienwert . ' Gesamptpunktzahl von Oben: ' . $punktzahlEinesPbn);
+				
 				if($kriterienwert == $punktzahlEinesPbn) {
 					$count++;
 				}
@@ -537,7 +539,7 @@ class ilTestStatisticsExportPlugin extends ilTestExportPlugin {
 		}
 		
 		$counter = $lastRowOfRawData+8;
-		foreach ($anzahlProKriteriumwert as $anzahl) {
+		foreach ($anzahlProKriteriumwert as $anzahl) {	
 			$cell = $objWorksheet->getCell ( 'B' . $counter );
 			$cell->setValue ($anzahl);
 			$counter++;
@@ -604,11 +606,9 @@ class ilTestStatisticsExportPlugin extends ilTestExportPlugin {
 						//error_log('Habe hier was gefunden');
 						
 						$itemCount++;
-							
-						$value = $objWorksheet->getCell( $column . $row)->getValue();
-						//$value = $objWorksheet->getCell( 'I' . $row)->getValue();
-							
-	
+
+						$value = $objWorksheet->getCell( $column . $row)->getValue();							
+
 						if ($value === NULL || $value === '') {
 							$countNotSeen++;
 						} elseif ($value >= (0.5 * $maximumPoints[($itemCount-1)])){
@@ -621,6 +621,7 @@ class ilTestStatisticsExportPlugin extends ilTestExportPlugin {
 						$itemCount++;
 					}	
 				}
+				
 				//error_log(' Für Punktzahl ' . $gesamtpunkte . ' in Spalte ' . $column . ': ' . $countCorrect.' '.$countWrong.' - '.$countSeen.' '.$countNotSeen);
 
 				/*
@@ -699,15 +700,33 @@ class ilTestStatisticsExportPlugin extends ilTestExportPlugin {
 		$writeRow = $lastRowOfRawData + 8 + count($gesamtpunktzahlenUnique);
 		$objWorksheet->setCellValue ( 'A' . $writeRow, 'Summen -> ' );
 		
+		//error_log('Aktuelle Zeile:' . $writeRow);
+		
 		for($column = 'B'; $column != $stopColumn; $column ++) {
-			$cell = $objWorksheet->getCell ( $column . $writeRow );
+			//error_log('Write to: ' . $column . ':' . $writeRow);
+
+			/*
+			$debug = $objWorksheet->getCell( $column . ($writeRow-1))->getValue();
+			error_log('Zelle' . $column . ($writeRow-1) . ' davor: ' . $debug);
+			*/
 			
 			$value = 0;
 			for ($row = ($lastRowOfRawData + 8); $row < $writeRow ; $row++) {
 				$value += $objWorksheet->getCell( $column . $row)->getValue();
 			}
-			
+
+			$cell = $objWorksheet->getCell ( $column . $writeRow );	
 			$cell->setValue ($value);
+
+			/*
+			$debug = $objWorksheet->getCell( $column . ($writeRow-1))->getValue();
+			error_log('Zelle ' . $column . ($writeRow-1) .' danach: ' . $debug);
+				
+			$debug2 = $objWorksheet->getCell( $column . $writeRow)->getValue();
+			error_log('Zelle ' . $column . ($writeRow) . ' danach: ' . $debug2);
+			*/
+			
+			//error_log('Schreibe in Zelle: ' . $column . ':' . $writeRow . 'den Wert: ' . $value);
 			//$cell->setValue ('=SUM(' . $column . ($lastRowOfRawData + 8) . ':' . $column . ($writeRow -1) . ')' );
 		}
 		
