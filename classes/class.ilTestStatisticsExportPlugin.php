@@ -55,6 +55,7 @@ class ilTestStatisticsExportPlugin extends ilTestExportPlugin {
 		
 		$this->fillInQuestionDataSheet1 ( $objWorksheet );
 		
+		$this->calculateSummarySheet1 ( $objWorksheet );
 		
 		// Create the second sheet, with questionspecific data
 		//$objPHPExcel->addSheet ( $this->createRawDataDifficulty () );
@@ -79,20 +80,20 @@ class ilTestStatisticsExportPlugin extends ilTestExportPlugin {
 		 * Grunddaten des Tests
 		 * Titel, Datum, Fragenanzahl, TN-Anzahl
 		 * 
-		 * A1-B4
+		 * B1-C4
 		 */
-		$objWorksheet->setCellValue ( 'A1' , 'Titel der Klausur');
-		$objWorksheet->setCellValue ( 'B1' , $this->getTest()->getTitle() );
+		$objWorksheet->setCellValue ( 'B1' , 'Titel der Klausur');
+		$objWorksheet->setCellValue ( 'C1' , $this->getTest()->getTitle() );
 		
 		$exportDate = date("Y-m-d H:i:s");
-		$objWorksheet->setCellValue ( 'A2' , 'Exportdatum' );
-		$objWorksheet->setCellValue ( 'B2' , $exportDate );
+		$objWorksheet->setCellValue ( 'B2' , 'Exportdatum' );
+		$objWorksheet->setCellValue ( 'C2' , $exportDate );
 		
-		$objWorksheet->setCellValue ( 'A3' , $this->getTest ()->lng->txt ( "tst_stat_result_qmax" ) );
-		$objWorksheet->setCellValue ( 'B3' , 'xxx' );
+		$objWorksheet->setCellValue ( 'B3' , $this->getTest ()->lng->txt ( "tst_stat_result_qmax" ) );
+		$objWorksheet->setCellValue ( 'C3' , 'xxx' );
 		
-		$objWorksheet->setCellValue ( 'A4' , $this->getTest ()->lng->txt ( "tst_stat_result_total_participants" ) );
-		$objWorksheet->setCellValue ( 'B4' , 'xxx' );
+		$objWorksheet->setCellValue ( 'B4' , $this->getTest ()->lng->txt ( "tst_stat_result_total_participants" ) );
+		$objWorksheet->setCellValue ( 'C4' , 'xxx' );
 			
 		/*
 		 * Grunddaten der Fragen
@@ -121,7 +122,7 @@ class ilTestStatisticsExportPlugin extends ilTestExportPlugin {
             			'color' => array('rgb' => '87cefa')
         		)
 		);
-		$objWorksheet->getStyle('A1:B4')->applyFromArray($styleArray);
+		$objWorksheet->getStyle('B1:C4')->applyFromArray($styleArray);
 		unset($styleArray);
 		
 		//Breite der Spalten automatisch anpassen
@@ -150,10 +151,10 @@ class ilTestStatisticsExportPlugin extends ilTestExportPlugin {
 		
 		// Anzahl der Teilnehmer
 		$numberOfParticipants = $data->getStatistics ()->getStatistics ()->count ();
-		$objWorksheet->setCellValue ( 'B4' , $numberOfParticipants );
+		$objWorksheet->setCellValue ( 'C4' , $numberOfParticipants );
 		
 		/*
-		 * Aufgaben nach ID geordnet listen ab G6
+		 * Aufgaben nach ID geordnet auflisten ab G6
 		 * 
 		 * Sonderfall: TN haben nicht nur unterschiedliche Aufgabenreihenfolge, sondern auch (t.w.) andere Aufgaben
 		 * Sonderfall vom Sonderfall: TN können unterschiedliche maximale Punktzahlen haben
@@ -175,23 +176,179 @@ class ilTestStatisticsExportPlugin extends ilTestExportPlugin {
 				
 				foreach ( $participantsQuestions as $question ) {
 					
-					$titelAndID = preg_replace ( "/<.*?>/", "", $data->getQuestionTitle ( $question ["id"] ) . " (ID=" . $question ["id"] . ")" );
+					$titelAndID = preg_replace ( "/<.*?>/", "", $data->getQuestionTitle ( $question ["id"] ) . " (ID=" . $question ["id"] . ")" ); 
 					$id = $question ["id"] ;
-					$questionAssoziation[$id] = $titelAndID;
-					
-					//$allQuestions = array_merge($allQuestions, array_diff(array($titelAndID), $allQuestions));
 						
+					$questionAssoziation[$id] = $titelAndID;
+
 				}
-				$allQuestions = array_merge($allQuestions, array_diff($questionAssoziation, $allQuestions));
-				
+				$allQuestions = $allQuestions + $questionAssoziation;
 			}
 		}
-		
 		ksort($allQuestions);
-		error_log(implode(",", $allQuestions));
+		/*
+		 * $allQuestions ist ein assoziatives Array nach dem Muster:
+		 * (integer)question_id -> (string)Fragetitel+ID
+		 * Enthalten sind duplikatreduziert alle Fragen des Tests in aufsteigender ID-Reihenfolge
+		 */
 		$objWorksheet->fromArray ( $allQuestions, null, 'G6', true );
 		
+		//Anzahl der Aufgaben in den Kopfbereich eintragen
+		$objWorksheet->setCellValue ( 'C3' , count($allQuestions) );
+
+		
+		/*
+		 * Aufgabenspalten mit Rohwerten besetzen
+		 *
+		 */
+		$rowCount = 7; //Erste freie Zeile nach den verschiedenen Kopfzeilen
+		$maxColumn = $objWorksheet->getHighestColumn(); //Startspalte ist immer G
+		$maxColumn++;
+		$participantNumber = 1;
+		foreach ( $data->getParticipants () as $active_id => $userdata ) {
+
+			//Teilnehmernummer
+			$objWorksheet->setCellValue ( 'A'.$rowCount , $participantNumber );
+			$participantNumber++;
+			
+			/*
+			 * Max. erreichbare Punkte
+			 * Eigene Spalte, da bei Zufallstests nicht zwangsläufig bei jedem identisch
+			 */
+			$maxPoints = $data->getParticipant ( $active_id )->getMaxpoints ();
+			$objWorksheet->setCellValue ( 'B'.$rowCount , $maxPoints );
+			
+			//Erreichte Punkte
+			$reachedPoints = $data->getParticipant ( $active_id )->getReached ();
+			$objWorksheet->setCellValue ( 'C'.$rowCount , $reachedPoints );
+
+			//Mittelwert = Erreichte Punkte / Max. Punkte
+			$objWorksheet->setCellValue ( 'D'.$rowCount , '=C'.$rowCount.'/B'.$rowCount );
+				
+			//Varianz = Mittelwert - Mittelwert * Mittelwert
+			//TODO Ersetzen mit Feldfunktionen von Excel z.B. (=VARIANZ(A1:B1))
+			$objWorksheet->setCellValue ( 'E'.$rowCount , '=VARP(G'.$rowCount.':'. $objWorksheet->getHighestColumn() . $rowCount . ')' );
+			//$objWorksheet->setCellValue ( 'E'.$rowCount , '=D'.$rowCount.'-(D'.$rowCount.'*D'.$rowCount.')' );
+			
+			//Standardabweichung = Wurzel(Varianz)
+			$objWorksheet->setCellValue ( 'F'.$rowCount , '=sqrt(E'.$rowCount.')');
+				
+			// Nur der bewertete Durchlauf soll genutzt werden
+			$pass = 0;
+			if ($this->getTest ()->getPassScoring () == SCORE_BEST_PASS) {
+				$pass = $data->getParticipant ( $active_id )->getBestPass ();
+			} else { //der letzte Durchlauf
+				$pass = $data->getParticipant ( $active_id )->getLastPass ();
+			}
+
+			$atLeastOneAnsweredQueston = false;
+			if (is_object ( $data->getParticipant ( $active_id ) ) && is_array ( $data->getParticipant ( $active_id )->getQuestions ( $pass ) )) {
+				$participantsQuestions = $data->getParticipant ( $active_id )->getQuestions ( $pass );
+		
+				foreach ( $participantsQuestions as $question ) {
+					
+					for($column = 'G'; $column != ($maxColumn); $column ++) {
+						$question_data = $data->getParticipant ( $active_id )->getPass ( $pass )->getAnsweredQuestionByQuestionId ( $question ["id"] );
+											
+						$titleFromSheet = $objWorksheet->getCell( $column . '6')->getValue();
+						$titelFromObject = preg_replace ( "/<.*?>/", "", $data->getQuestionTitle ( $question ["id"] ) . " (ID=" . $question ["id"] . ")" );
+						
+						//error_log($titleFromSheet.':'.$titelFromObject);
+						//$boolean = $titleFromSheet === $titelFromObject;
+						//error_log($boolean);
+						
+						
+						
+						if ($titleFromSheet === $titelFromObject) {
+							$cell = $objWorksheet->getCell( $column . $rowCount);
+							$cell->setValue ( $question_data ["reached"] );
+							
+							//Sonderfall: Nutzer hat keine einzige Frage beantwortet Teil 1/2
+							if ( $question_data ["reached"] != null) {
+								$atLeastOneAnsweredQueston = true;
+							}
+							
+						}
+					}
+				}
+			}
+			
+			//Sonderfall: Nutzer hat keine einzige Frage beantwortet Teil 2/2
+			if (!$atLeastOneAnsweredQueston) {
+				$objWorksheet->setCellValue ( 'C'.$rowCount , 'Test unbearb. abgebr.' );
+				$objWorksheet->setCellValue ( 'D'.$rowCount , null );
+				$objWorksheet->setCellValue ( 'E'.$rowCount , null );
+				$objWorksheet->setCellValue ( 'F'.$rowCount , null );
+			}	
+			$rowCount++;	
+		}		
 	}	
+
+	public function calculateSummarySheet1(&$objWorksheet) {
+		$lastRowOfRawData = $objWorksheet->getHighestRow ();
+		$lastColumnRawData = $objWorksheet->getHighestColumn();
+
+		$maxColumn = $lastColumnRawData;
+		$maxColumn ++;
+		
+		//Auswertungstabellenbeschriftung
+		$objWorksheet->setCellValue ( 'B'.($lastRowOfRawData+3) , 'Spaltensumme');
+		$objWorksheet->setCellValue ( 'B'.($lastRowOfRawData+4) , 'Summenprodukt');
+		
+		$objWorksheet->setCellValue ( 'B'.($lastRowOfRawData+6) , 'Mittelwert');
+		$objWorksheet->setCellValue ( 'B'.($lastRowOfRawData+7) , 'Varianz' );
+		$objWorksheet->setCellValue ( 'B'.($lastRowOfRawData+8) , 'Standardabweichung' );
+		$objWorksheet->setCellValue ( 'B'.($lastRowOfRawData+9) , 'richtige Antworten' );
+		$objWorksheet->setCellValue ( 'B'.($lastRowOfRawData+10) , 'falsche Antworten' );
+		$objWorksheet->setCellValue ( 'B'.($lastRowOfRawData+11) , 'unbeantwortet' );
+		$objWorksheet->setCellValue ( 'B'.($lastRowOfRawData+12) , 'Schwierigkeitsindex' );
+		$objWorksheet->setCellValue ( 'B'.($lastRowOfRawData+13) , 'Trennschärfekoeffizient' );
+		
+		for($column = 'C'; $column != ($maxColumn); $column ++) {
+			//Spaltensumme
+			$objWorksheet->setCellValue ( $column.($lastRowOfRawData+3) , '=SUM(' . $column.'7:'.$column.$lastRowOfRawData.')' );
+			
+			//Summenprodukt
+			$objWorksheet->setCellValue ( $column.($lastRowOfRawData+4) , '=SUMPRODUCT(' . $column.'7:'.$column.$lastRowOfRawData.','. $column.'7:'.$column.$lastRowOfRawData . ')' );
+		}	
+		
+		//Anzahl Teilnehmer
+		$anzahlTeilnehmer = $objWorksheet->getCell( 'A' . $lastRowOfRawData)->getValue();
+		
+		for($column = 'G'; $column != ($maxColumn); $column ++) {
+			//Mittelwert
+			//$objWorksheet->setCellValue ( $column.($lastRowOfRawData+6) , '=' . $column.($lastRowOfRawData+3) . '/' . $anzahlTeilnehmer - nichtbeantwortet );
+			
+			/*
+			//Varianz
+			$objWorksheet->setCellValue ( $column.($lastRowOfRawData+4) , '=SUMPRODUCT(' . $column.'7:'.$column.$lastRowOfRawData.','. $column.'7:'.$column.$lastRowOfRawData . ')' );
+			
+			
+			//Standardabweichung
+			$objWorksheet->setCellValue ( $column.($lastRowOfRawData+4) , '=SUMPRODUCT(' . $column.'7:'.$column.$lastRowOfRawData.','. $column.'7:'.$column.$lastRowOfRawData . ')' );
+			
+			
+			//richtige Antworten
+			$objWorksheet->setCellValue ( $column.($lastRowOfRawData+4) , '=SUMPRODUCT(' . $column.'7:'.$column.$lastRowOfRawData.','. $column.'7:'.$column.$lastRowOfRawData . ')' );
+			
+			
+			//falsche Antworten
+			$objWorksheet->setCellValue ( $column.($lastRowOfRawData+4) , '=SUMPRODUCT(' . $column.'7:'.$column.$lastRowOfRawData.','. $column.'7:'.$column.$lastRowOfRawData . ')' );
+				
+			
+			//unbeantwortete Fragen
+			$objWorksheet->setCellValue ( $column.($lastRowOfRawData+4) , '=SUMPRODUCT(' . $column.'7:'.$column.$lastRowOfRawData.','. $column.'7:'.$column.$lastRowOfRawData . ')' );
+				
+			
+			//Schwierigkeitsindex
+			$objWorksheet->setCellValue ( $column.($lastRowOfRawData+4) , '=SUMPRODUCT(' . $column.'7:'.$column.$lastRowOfRawData.','. $column.'7:'.$column.$lastRowOfRawData . ')' );
+				
+			//Trennschärfekoeffizient
+			$objWorksheet->setCellValue ( $column.($lastRowOfRawData+4) , '=SUMPRODUCT(' . $column.'7:'.$column.$lastRowOfRawData.','. $column.'7:'.$column.$lastRowOfRawData . ')' );
+*/
+		}
+		
+	}
 	
 	/**
 	 * creates another worksheet
