@@ -58,8 +58,12 @@ class ilTestStatisticsExportPlugin extends ilTestExportPlugin {
 		$this->calculateSummarySheet1 ( $objWorksheet );
 		
 		// Create the second sheet, with questionspecific data
-		//$objPHPExcel->addSheet ( $this->createRawDataDifficulty () );
+		$this->createProductArray ( $objPHPExcel);
 
+		$this->createTrueFalseArrayAndProductArray($objPHPExcel);
+		
+		$this->calculateDiscrimationIndex( $objPHPExcel);
+		
 		// Save XSLX file
 		ilUtil::makeDirParents ( dirname ( $filename->getPathname ( 'xlsx', 'statistics' ) ) );
 		$objWriter = PHPExcel_IOFactory::createWriter ( $objPHPExcel, 'Excel2007' );
@@ -347,8 +351,18 @@ class ilTestStatisticsExportPlugin extends ilTestExportPlugin {
 				}
 			}
 		}// Ende Erreichbare Punktzahl pro Aufgabe
+
 		
 
+		//Mittelwert der erreichten Punkte aller Teilnehmer
+		$objWorksheet->setCellValue ( 'C'.($lastRowOfRawData+11) ,  '=AVERAGE(C7:C'. $lastRowOfRawData.')');
+		
+		//Varianz der erreichten Punkte aller Teilnehmer
+		$objWorksheet->setCellValue ( 'C'.($lastRowOfRawData+12) ,  '=VARP(C7:C'. $lastRowOfRawData.')');
+		
+		//Standardabweichung der erreichten Punkte aller Teilnehmer
+		$objWorksheet->setCellValue ( 'C'.($lastRowOfRawData+13) ,  '=sqrt(C'.($lastRowOfRawData+12).')');
+	
 		for($column = 'G'; $column != ($maxColumn); $column ++) {
 			
 			//richtige Antworten -> über (>=) 50% der erreichbaren Punktzahl =ZÄHLENWENN(G7:G116;">="&G122*"0,5")
@@ -357,7 +371,7 @@ class ilTestStatisticsExportPlugin extends ilTestExportPlugin {
 			//falsche Antworten -> unter (<) 50% der erreichbaren Punktzahl
 			$objWorksheet->setCellValue ( $column.($lastRowOfRawData+8) ,  '=COUNTIF('. $column.'7:' . $column. $lastRowOfRawData  . ',"<"&'. $column.($lastRowOfRawData+6) . '*"0,5")');
 
-			//unbeantwortete Fragen (Zelle = NIL)
+			//unbeantwortete Fragen (wenn Zelle = NIL)
 			$objWorksheet->setCellValue ( $column.($lastRowOfRawData+9) , '=COUNTIF('. $column.'7:' . $column. $lastRowOfRawData  . ',"")');
 
 			//Mittelwert
@@ -379,11 +393,6 @@ class ilTestStatisticsExportPlugin extends ilTestExportPlugin {
 			} else {
 				$objWorksheet->setCellValue ( $column.($lastRowOfRawData+14) , '=100*(SUM(' . $column . '7:' . $column . ($lastRowOfRawData) . ')/' . (($anzahlTeilnehmer - $countNotShown) * $maxPoints) . ')' );
 			}
-
-			
-			//Trennschärfekoeffizient
-			//$objWorksheet->setCellValue ( $column.($lastRowOfRawData+15) , '=SUMPRODUCT(' . $column.'7:'.$column.$lastRowOfRawData.','. $column.'7:'.$column.$lastRowOfRawData . ')' );
-
 		}
 	}
 	
@@ -392,7 +401,170 @@ class ilTestStatisticsExportPlugin extends ilTestExportPlugin {
 	 *
 	 * @return PHPExcel_Worksheet objWorksheet
 	 */
-	public function createRawDataDifficulty() {
+	public function createProductArray(&$objPHPExcel) {
+		
+		$produkteAufgaben = new PHPExcel_Worksheet ( $objPHPExcel );
+		$produkteAufgaben->setTitle ( 'Aufgaben Produkte' );
+		
+		$firstSheet = $objPHPExcel->getSheet(0);
+		$anzahlTeilnehmer = $firstSheet->getCell( 'C4' )->getValue();
+		$endzeile = $anzahlTeilnehmer + 6;
+		$lastColumnRawData = $firstSheet->getHighestColumn();
+		
+		$aufgabenwerte = $firstSheet->rangeToArray('G7:' . $lastColumnRawData . $endzeile,0,true,false);
+		//$produkteAufgaben->fromArray($aufgabenwerte, NULL, 'A1', true);
+		
+		$transponierteAufgabenwerte = PHPExcel_Calculation_LookupRef::TRANSPOSE($aufgabenwerte);
+		//$produkteAufgaben->fromArray($transponierteAufgabenwerte, NULL, 'A150', true);
+		
+		
+		$endmatrix = PHPExcel_Calculation_MathTrig::MMULT($transponierteAufgabenwerte, $aufgabenwerte);	
+		$produkteAufgaben->fromArray($endmatrix, NULL, 'A1', true);
+		
+		$lastColumnMMULTData = $produkteAufgaben->getHighestColumn();
+		$lastRowMMULTData = $produkteAufgaben->getHighestRow();
+		
+		$maxColumn = $lastColumnMMULTData;
+		$maxColumn++;
+		
+		$writeRow = $lastRowMMULTData + 2;
 
+		for($column = 'A'; $column != ($maxColumn); $column ++) {
+		
+			$cell = $produkteAufgaben->getCell ( $column . $writeRow );
+			$cell->setValue ( '=SUM(' . $column . '1:' . $column . $lastRowMMULTData . ')' );				
+		}
+		
+		$objPHPExcel->addSheet ( $produkteAufgaben );
+	}
+	
+	public function createTrueFalseArrayAndProductArray($objPHPExcel){
+
+		$firstSheet = $objPHPExcel->getSheet(0);
+		
+		$richtigFalschWerte = new PHPExcel_Worksheet ( $objPHPExcel );
+		$richtigFalschWerte->setTitle ( 'RichtigFalschWerte' );
+		$objPHPExcel->addSheet ( $richtigFalschWerte );
+		
+		$lastColumnRawData = $firstSheet->getHighestColumn();
+		$maxColumn = $lastColumnRawData;
+		$maxColumn ++;
+		
+		$anzahlTeilnehmer = $firstSheet->getCell( 'C4' )->getValue();		
+	
+		//Erreichbare Punktzahl = $anzahlTeilnehmer + 12
+		
+		$endrow = $anzahlTeilnehmer + 6;
+		$richtigFalschColumn = 'A';
+		for($column = 'G'; $column != ($maxColumn); $column ++) {
+
+			$erreichbarePunkte = $firstSheet->getCell( $column.($anzahlTeilnehmer + 12) )->getValue();
+						
+			for ($row = 7; $row <= $endrow; $row++){
+		
+
+				if($firstSheet->getCell( $column . $row )->getCalculatedValue() >= (0.5 * (float)$erreichbarePunkte)){
+					$richtigFalschWerte->setCellValue( $richtigFalschColumn . ($row-6), 1);
+
+				} else {
+					$richtigFalschWerte->setCellValue( $richtigFalschColumn . ($row-6), 0);
+				}
+			}
+			$richtigFalschColumn++;
+		}
+		
+		$lastColumnTrueFalseData = $richtigFalschWerte->getHighestColumn();
+		$lastRowTrueFalseData = $richtigFalschWerte->getHighestRow();
+		
+		$summaryColumn = $lastColumnTrueFalseData;
+		$summaryColumn ++;
+		for ($row = 1; $row <= $lastRowTrueFalseData; $row++) {
+			$richtigFalschWerte->setCellValue ( $summaryColumn.$row ,  '=SUM( A' .$row . ':' . $lastColumnTrueFalseData . $row . ')');
+				
+		}
+		
+		
+		$richtigFalschWerte->setCellValue( $summaryColumn . ($lastRowTrueFalseData+1), '=AVERAGE(' . $summaryColumn . '1:' . $summaryColumn .$lastRowTrueFalseData . ')');
+		$richtigFalschWerte->setCellValue( $summaryColumn . ($lastRowTrueFalseData+2), '=VARP(' . $summaryColumn . '1:' . $summaryColumn .$lastRowTrueFalseData . ')');
+		$richtigFalschWerte->setCellValue( $summaryColumn . ($lastRowTrueFalseData+3), '=SQRT(' . $summaryColumn . ($lastRowTrueFalseData+2) . ')');
+		
+		$richtigFalschProdukte = new PHPExcel_Worksheet ( $objPHPExcel );
+		$richtigFalschProdukte->setTitle ( 'RichtigFalsch Produkte' );
+		$objPHPExcel->addSheet ( $richtigFalschProdukte );
+		
+		$aufgabenwerte = $richtigFalschWerte->rangeToArray('A1:' . $lastColumnTrueFalseData . $lastRowTrueFalseData,0,true,false);
+		//$produkteAufgaben->fromArray($aufgabenwerte, NULL, 'A1', true);
+		
+		$transponierteAufgabenwerte = PHPExcel_Calculation_LookupRef::TRANSPOSE($aufgabenwerte);		
+		
+		$endmatrix = PHPExcel_Calculation_MathTrig::MMULT($transponierteAufgabenwerte, $aufgabenwerte);
+		$richtigFalschProdukte->fromArray($endmatrix, NULL, 'A1', true);
+		
+		$lastColumnMMULTData = $richtigFalschProdukte->getHighestColumn();
+		$lastRowMMULTData = $richtigFalschProdukte->getHighestRow();
+		
+		$maxColumn = $lastColumnMMULTData;
+		$maxColumn++;
+		
+		$writeRow = $lastRowMMULTData + 2;
+		
+		for($column = 'A'; $column != ($maxColumn); $column ++) {
+		
+			$cell = $richtigFalschProdukte->getCell ( $column . $writeRow );
+			$cell->setValue ( '=SUM(' . $column . '1:' . $column . $lastRowMMULTData . ')' );
+		}
+		
+	}
+	
+	
+	public function calculateDiscrimationIndex(&$objPHPExcel){
+		$firstSheet = $objPHPExcel->getSheet(0);
+		
+		$truefalse = $objPHPExcel->getSheet(2);
+		$tfmaxc = $truefalse->getHighestColumn();
+		$tfmaxr = $truefalse->getHighestRow();
+		
+		
+		$produktSummen = $objPHPExcel->getSheet(3);
+		
+		$lastColumnRawData = $firstSheet->getHighestColumn();
+		$maxColumn = $lastColumnRawData;
+		$maxColumn ++;
+		
+		$anzahlTeilnehmer = $firstSheet->getCell( 'C4' )->getValue();
+		$endzeile = $anzahlTeilnehmer + 21;
+		
+		
+		$lastColumnProductData = $produktSummen->getHighestColumn();
+		$lastRowProductData = $produktSummen->getHighestRow();
+
+		$maxColumn = $lastColumnRawData;
+		$maxColumn ++;
+		
+		$produkteAufgabenColumn = 'A';
+		for($column = 'G'; $column != ($maxColumn); $column ++) {
+
+			$summenwert = $produktSummen->getCell( $produkteAufgabenColumn . $lastRowProductData )->getCalculatedValue();
+			$produkteAufgabenColumn++;
+
+			//Durchschnitt Gesamt
+			$durchschnittGesamt_TrueFalse = $truefalse->getCell( $tfmaxc.($tfmaxr-2) )->getCalculatedValue();
+					
+			//Std.Abw. Gesamt
+			$stdAbwGes = $truefalse->getCell( $tfmaxc.$tfmaxr )->getCalculatedValue();
+				
+			
+			//Trennschärfeformel
+			
+			/* Debug
+			error_log('=(((' . $summenwert . '/' . $column . ($anzahlTeilnehmer + 13) . ')-' . $durchschnittGesamt_TrueFalse .')/' . $stdAbwGes . ')');
+			$firstSheet->setCellValue ( $column.($endzeile) , '=(((' . $summenwert . '/' . $column . ($anzahlTeilnehmer + 13) . ')-' . $durchschnittGesamt_TrueFalse .')/' . $stdAbwGes . ')');
+			error_log(	'=(sqrt(' .  $column . ($anzahlTeilnehmer + 13) . '/(' . $anzahlTeilnehmer . '-' .$column . ($anzahlTeilnehmer + 15) . '-' . $column . ($anzahlTeilnehmer + 13) . ')))');
+			$firstSheet->setCellValue ( $column.($endzeile+1) ,		'=(sqrt(' .  $column . ($anzahlTeilnehmer + 13) . '/(' . $anzahlTeilnehmer . '-' .$column . ($anzahlTeilnehmer + 15) . '-' . $column . ($anzahlTeilnehmer + 13) . ')))');
+			$firstSheet->setCellValue ( $column.($endzeile+2) , '=(' . $column.($endzeile) . '*' . $column.($endzeile+1) .' )');
+			$firstSheet->setCellValue ( $column.($endzeile+3) , '=(((' . $summenwert . '/' . $column . ($anzahlTeilnehmer + 13) . ')-' . $durchschnittGesamt_TrueFalse .')/' . $stdAbwGes . ')*' . '(sqrt(' .  $column . ($anzahlTeilnehmer + 13) . '/(' . $anzahlTeilnehmer . '-' .$column . ($anzahlTeilnehmer + 15) . '-' . $column . ($anzahlTeilnehmer + 13) . ')))');
+			*/
+			$firstSheet->setCellValue ( $column.($endzeile) , '=(((' . $summenwert . '/' . $column . ($anzahlTeilnehmer + 13) . ')-' . $durchschnittGesamt_TrueFalse .')/' . $stdAbwGes . ')*' . '(sqrt(' .  $column . ($anzahlTeilnehmer + 13) . '/(' . $anzahlTeilnehmer . '-' .$column . ($anzahlTeilnehmer + 15) . '-' . $column . ($anzahlTeilnehmer + 13) . ')))');
+		}
 	}
 }
