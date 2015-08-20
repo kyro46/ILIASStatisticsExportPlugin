@@ -58,9 +58,11 @@ class ilTestStatisticsExportPlugin extends ilTestExportPlugin {
 		$this->calculateSummarySheet1 ( $objWorksheet );
 		
 		// Create the second sheet, with questionspecific data
-		$this->createProductArray ( $objPHPExcel);
+		//Durch neue Trennschärfeformel überflüssig
+		//$this->createProductArray ( $objPHPExcel);
 
-		$this->createTrueFalseArrayAndProductArray($objPHPExcel);
+		//Durch neue Trennschärfeformel überflüssig
+		//$this->createTrueFalseArrayAndProductArray($objPHPExcel);
 		
 		$this->calculateDiscrimationIndex( $objPHPExcel);
 		
@@ -307,7 +309,7 @@ class ilTestStatisticsExportPlugin extends ilTestExportPlugin {
 		$objWorksheet->setCellValue ( 'B'.($lastRowOfRawData+12) , 'Varianz' );
 		$objWorksheet->setCellValue ( 'B'.($lastRowOfRawData+13) , 'Standardabweichung' );
 		$objWorksheet->setCellValue ( 'B'.($lastRowOfRawData+14) , 'Schwierigkeitsindex' );
-		$objWorksheet->setCellValue ( 'B'.($lastRowOfRawData+15) , 'Trennschärfekoeffizient' );
+		$objWorksheet->setCellValue ( 'B'.($lastRowOfRawData+15) , 'Trennschärfekoeffizient (Pearson)' );
 		
 		for($column = 'C'; $column != ($maxColumn); $column ++) {
 			//Spaltensumme
@@ -520,6 +522,11 @@ class ilTestStatisticsExportPlugin extends ilTestExportPlugin {
 	public function calculateDiscrimationIndex(&$objPHPExcel){
 		$firstSheet = $objPHPExcel->getSheet(0);
 		
+		/*
+		 * Alte Trennschärfe, mit Excelfunktionen, fehleranfällig
+		*/
+		
+		/*
 		$truefalse = $objPHPExcel->getSheet(2);
 		$tfmaxc = $truefalse->getHighestColumn();
 		$tfmaxr = $truefalse->getHighestRow();
@@ -555,16 +562,95 @@ class ilTestStatisticsExportPlugin extends ilTestExportPlugin {
 				
 			
 			//Trennschärfeformel
-			
-			/* Debug
-			error_log('=(((' . $summenwert . '/' . $column . ($anzahlTeilnehmer + 13) . ')-' . $durchschnittGesamt_TrueFalse .')/' . $stdAbwGes . ')');
-			$firstSheet->setCellValue ( $column.($endzeile) , '=(((' . $summenwert . '/' . $column . ($anzahlTeilnehmer + 13) . ')-' . $durchschnittGesamt_TrueFalse .')/' . $stdAbwGes . ')');
-			error_log(	'=(sqrt(' .  $column . ($anzahlTeilnehmer + 13) . '/(' . $anzahlTeilnehmer . '-' .$column . ($anzahlTeilnehmer + 15) . '-' . $column . ($anzahlTeilnehmer + 13) . ')))');
-			$firstSheet->setCellValue ( $column.($endzeile+1) ,		'=(sqrt(' .  $column . ($anzahlTeilnehmer + 13) . '/(' . $anzahlTeilnehmer . '-' .$column . ($anzahlTeilnehmer + 15) . '-' . $column . ($anzahlTeilnehmer + 13) . ')))');
-			$firstSheet->setCellValue ( $column.($endzeile+2) , '=(' . $column.($endzeile) . '*' . $column.($endzeile+1) .' )');
-			$firstSheet->setCellValue ( $column.($endzeile+3) , '=(((' . $summenwert . '/' . $column . ($anzahlTeilnehmer + 13) . ')-' . $durchschnittGesamt_TrueFalse .')/' . $stdAbwGes . ')*' . '(sqrt(' .  $column . ($anzahlTeilnehmer + 13) . '/(' . $anzahlTeilnehmer . '-' .$column . ($anzahlTeilnehmer + 15) . '-' . $column . ($anzahlTeilnehmer + 13) . ')))');
-			*/
+			//error_log('=(((' . $summenwert . '/' . $column . ($anzahlTeilnehmer + 13) . ')-' . $durchschnittGesamt_TrueFalse .')/' . $stdAbwGes . ')');
+			//$firstSheet->setCellValue ( $column.($endzeile) , '=(((' . $summenwert . '/' . $column . ($anzahlTeilnehmer + 13) . ')-' . $durchschnittGesamt_TrueFalse .')/' . $stdAbwGes . ')');
+			//error_log(	'=(sqrt(' .  $column . ($anzahlTeilnehmer + 13) . '/(' . $anzahlTeilnehmer . '-' .$column . ($anzahlTeilnehmer + 15) . '-' . $column . ($anzahlTeilnehmer + 13) . ')))');
+			//$firstSheet->setCellValue ( $column.($endzeile+1) ,		'=(sqrt(' .  $column . ($anzahlTeilnehmer + 13) . '/(' . $anzahlTeilnehmer . '-' .$column . ($anzahlTeilnehmer + 15) . '-' . $column . ($anzahlTeilnehmer + 13) . ')))');
+			//$firstSheet->setCellValue ( $column.($endzeile+2) , '=(' . $column.($endzeile) . '*' . $column.($endzeile+1) .' )');
+			//$firstSheet->setCellValue ( $column.($endzeile+3) , '=(((' . $summenwert . '/' . $column . ($anzahlTeilnehmer + 13) . ')-' . $durchschnittGesamt_TrueFalse .')/' . $stdAbwGes . ')*' . '(sqrt(' .  $column . ($anzahlTeilnehmer + 13) . '/(' . $anzahlTeilnehmer . '-' .$column . ($anzahlTeilnehmer + 15) . '-' . $column . ($anzahlTeilnehmer + 13) . ')))');
+
 			$firstSheet->setCellValue ( $column.($endzeile) , '=(((' . $summenwert . '/' . $column . ($anzahlTeilnehmer + 13) . ')-' . $durchschnittGesamt_TrueFalse .')/' . $stdAbwGes . ')*' . '(sqrt(' .  $column . ($anzahlTeilnehmer + 13) . '/(' . $anzahlTeilnehmer . '-' .$column . ($anzahlTeilnehmer + 15) . '-' . $column . ($anzahlTeilnehmer + 13) . ')))');
 		}
+		*/
+		
+		
+		
+		
+		
+		
+		/*
+		 *
+		 * Pearson Correlation
+		 *
+		 */
+		$lastColumnRawData = $firstSheet->getHighestColumn();
+		$maxColumn = $lastColumnRawData;
+		$maxColumn++;
+			
+		$anzahlTeilnehmer = $firstSheet->getCell( 'C4' )->getValue();
+		$endzeile = $anzahlTeilnehmer + 21;
+		
+		//First Row Raw Data = 7
+		$lastRowRawData = $anzahlTeilnehmer + 6;
+		
+		for($column = 'G'; $column != ($maxColumn); $column ++) {
+			$array_item = array();
+			$array_test = array();
+			for($row = 7; $row <= $lastRowRawData; $row++) {
+				$value = $firstSheet->getCell( $column.$row )->getValue();
+				//error_log($value . ' in ' . $column.$row);
+				//error_log('Null? - ' . !($value === null));
+				//error_log('Empty? - ' . !($value === ''));
+				
+				if (!($value === null) && !($value === '') && is_numeric($firstSheet->getCell( 'C'.$row )->getValue())) {
+					error_log($value . ' inner ' . $column.$row);
+					$array_item[] = $value;
+					
+					$gesamttestwert = $firstSheet->getCell( 'C'.$row )->getValue();
+					$itemkorrigierterGesamttestwert = $gesamttestwert - $value;
+					
+					$array_test[] = $itemkorrigierterGesamttestwert;
+				}
+					
+			}
+			
+			//error_log(count($array_item));
+			//error_log(count($array_test));
+				
+			
+			error_log(implode($array_item, ' '));
+			error_log(implode($array_test, ' '));
+				
+			
+			$length= count($array_item);
+			$mean1=array_sum($array_item) / $length;
+			$mean2=array_sum($array_test) / $length;
+			
+			$a=0;
+			$b=0;
+			$axb=0;
+			$a2=0;
+			$b2=0;
+			
+			for($i=0;$i<$length;$i++)
+			{
+			$a=$array_item[$i]-$mean1;
+			$b=$array_test[$i]-$mean2;
+			$axb=$axb+($a*$b);
+			$a2=$a2+ pow($a,2);
+			$b2=$b2+ pow($b,2);
+			}
+			
+			if ($a2 == 0 || $b2 == 0){
+				$corr = "NaN";
+			} else {
+				$corr= $axb / sqrt($a2*$b2);
+				
+			}
+			
+			//error_log($axb .' / ' . 'sqrt(' . $a2 . '*' . $b2 . ')');
+			
+			$firstSheet->setCellValue ( $column.($endzeile) , $corr);
+		}		
 	}
 }
