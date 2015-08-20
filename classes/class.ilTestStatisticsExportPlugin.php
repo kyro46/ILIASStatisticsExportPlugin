@@ -309,7 +309,9 @@ class ilTestStatisticsExportPlugin extends ilTestExportPlugin {
 		$objWorksheet->setCellValue ( 'B'.($lastRowOfRawData+12) , 'Varianz' );
 		$objWorksheet->setCellValue ( 'B'.($lastRowOfRawData+13) , 'Standardabweichung' );
 		$objWorksheet->setCellValue ( 'B'.($lastRowOfRawData+14) , 'Schwierigkeitsindex' );
-		$objWorksheet->setCellValue ( 'B'.($lastRowOfRawData+15) , 'Trennschärfekoeffizient (Pearson)' );
+		$objWorksheet->setCellValue ( 'B'.($lastRowOfRawData+15) , 'Trennschärfe' );
+		$objWorksheet->setCellValue ( 'B'.($lastRowOfRawData+16) , 'Trennschärfe (Itemkorrigiert)' );
+		
 		
 		for($column = 'C'; $column != ($maxColumn); $column ++) {
 			//Spaltensumme
@@ -596,31 +598,59 @@ class ilTestStatisticsExportPlugin extends ilTestExportPlugin {
 		for($column = 'G'; $column != ($maxColumn); $column ++) {
 			$array_item = array();
 			$array_test = array();
+			$array_test_unkorrigiert = array();
 			for($row = 7; $row <= $lastRowRawData; $row++) {
 				$value = $firstSheet->getCell( $column.$row )->getValue();
-				//error_log($value . ' in ' . $column.$row);
-				//error_log('Null? - ' . !($value === null));
-				//error_log('Empty? - ' . !($value === ''));
-				
+
 				if (!($value === null) && !($value === '') && is_numeric($firstSheet->getCell( 'C'.$row )->getValue())) {
 					error_log($value . ' inner ' . $column.$row);
 					$array_item[] = $value;
 					
 					$gesamttestwert = $firstSheet->getCell( 'C'.$row )->getValue();
 					$itemkorrigierterGesamttestwert = $gesamttestwert - $value;
-					
+
 					$array_test[] = $itemkorrigierterGesamttestwert;
+					$array_test_unkorrigiert[] = $gesamttestwert;
+						
 				}
-					
+			}
+
+			//############## Pearson vanilla:
+				
+			$length= count($array_item);
+			$mean1=array_sum($array_item) / $length;
+			$mean2=array_sum($array_test_unkorrigiert) / $length;
+			
+			$a=0;
+			$b=0;
+			$axb=0;
+			$a2=0;
+			$b2=0;
+			
+			for($i=0;$i<$length;$i++)
+			{
+			$a=$array_item[$i]-$mean1;
+			$b=$array_test_unkorrigiert[$i]-$mean2;
+			$axb=$axb+($a*$b);
+			$a2=$a2+ pow($a,2);
+			$b2=$b2+ pow($b,2);
 			}
 			
-			//error_log(count($array_item));
-			//error_log(count($array_test));
+			if ($a2 == 0 || $b2 == 0){
+			$corr = "NaN";
+			} else {
+				$corr= $axb / sqrt($a2*$b2);
+						
+				}
+					
+				//error_log($axb .' / ' . 'sqrt(' . $a2 . '*' . $b2 . ')');
+					
+			$firstSheet->setCellValue ( $column.($endzeile) , $corr);
 				
+			//############## Itemkorrigiert:
 			
-			error_log(implode($array_item, ' '));
-			error_log(implode($array_test, ' '));
-				
+			
+			
 			
 			$length= count($array_item);
 			$mean1=array_sum($array_item) / $length;
@@ -650,7 +680,8 @@ class ilTestStatisticsExportPlugin extends ilTestExportPlugin {
 			
 			//error_log($axb .' / ' . 'sqrt(' . $a2 . '*' . $b2 . ')');
 			
-			$firstSheet->setCellValue ( $column.($endzeile) , $corr);
+			$firstSheet->setCellValue ( $column.($endzeile+1) , $corr);
+			
 		}		
 	}
 }
