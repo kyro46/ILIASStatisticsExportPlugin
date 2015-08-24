@@ -1,1 +1,20 @@
 statisticsexport_format#:#Teststatistiken (Excel)
+title_of_test#:#Titel der Klausur
+date_of_export#:#Exportdatum
+number_of_qst_and_part#:#Anz. Fragen (pro TN/Insg.)
+number#:#Nr.
+max_points#:#Max. Punkte
+points#:#Punkte
+mean#:#Mittelwert
+variance#:#Varianz
+std_deviation#:#Std.Abw.
+tasks#:#Aufgaben
+aborted#:#Unbearb. abgebr.
+column_sum#:#Spaltensumme
+sumproduct#:#Summenprodukt
+reachable_points#:#Erreichbare Punktzahl
+correct#:#Richtige Antworten
+wrong#:#Falsche Antworten
+not_answered#:#Unbeantwortet
+difficultyindex#:#Schwierigkeitsindex
+item_total_correlation#:#Trennschärfe

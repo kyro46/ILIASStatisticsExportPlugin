@@ -88,14 +88,14 @@ class ilTestStatisticsExportPlugin extends ilTestExportPlugin {
 		 * 
 		 * B1-C4
 		 */
-		$objWorksheet->setCellValue ( 'B1' , 'Titel der Klausur');
+		$objWorksheet->setCellValue ( 'B1' , $this->txt ( 'title_of_test' ));
 		$objWorksheet->setCellValue ( 'C1' , $this->getTest()->getTitle() );
 		
 		$exportDate = date("Y-m-d H:i:s");
-		$objWorksheet->setCellValue ( 'B2' , 'Exportdatum' );
+		$objWorksheet->setCellValue ( 'B2' , $this->txt ( 'date_of_export' ) );
 		$objWorksheet->setCellValue ( 'C2' , $exportDate );
 		
-		$objWorksheet->setCellValue ( 'B3' , 'Anz. Fragen (Pro TN/Insg.)' );
+		$objWorksheet->setCellValue ( 'B3' , $this->txt ( 'number_of_qst_and_part' ) );
 		$objWorksheet->setCellValue ( 'C3' , 'xxx' );
 		
 		$objWorksheet->setCellValue ( 'B4' , $this->getTest ()->lng->txt ( "tst_stat_result_total_participants" ) );
@@ -109,12 +109,12 @@ class ilTestStatisticsExportPlugin extends ilTestExportPlugin {
 		 */
 		
 		$headerRow = array ();
-		array_push ( $headerRow, 'Nr.' );
-		array_push ( $headerRow, 'Max. Punkte' );
-		array_push ( $headerRow, 'Punkte' );
-		array_push ( $headerRow, 'Mittelwert' );
-		array_push ( $headerRow, 'Varianz' );
-		array_push ( $headerRow, 'Std.Abw.' );
+		array_push ( $headerRow,  $this->txt ( 'number' ) );
+		array_push ( $headerRow,  $this->txt ( 'max_points' ) );
+		array_push ( $headerRow,  $this->txt ( 'points' ) );
+		array_push ( $headerRow,  $this->txt ( 'mean' ) );
+		array_push ( $headerRow, $this->txt ( 'variance' ) );
+		array_push ( $headerRow, $this->txt ( 'std_deviation' ) );
 		$objWorksheet->fromArray ( $headerRow, null, 'A6', true );
 
 		$styleArray = array(
@@ -136,7 +136,7 @@ class ilTestStatisticsExportPlugin extends ilTestExportPlugin {
 			$objWorksheet->getColumnDimension ( $columnID )->setAutoSize ( true );
 		}
 		
-		$objWorksheet->setCellValue ( 'G5' , 'Aufgaben' );
+		$objWorksheet->setCellValue ( 'G5' , $this->txt ( 'tasks' ) );
 		$objWorksheet->freezePane('G7');
 		
 		/*
@@ -279,7 +279,7 @@ class ilTestStatisticsExportPlugin extends ilTestExportPlugin {
 			
 			//Sonderfall: Nutzer hat keine einzige Frage beantwortet Teil 2/2
 			if (!$atLeastOneAnsweredQueston) {
-				$objWorksheet->setCellValue ( 'C'.$rowCount , 'Test unbearb. abgebr.' );
+				$objWorksheet->setCellValue ( 'C'.$rowCount , $this->txt ( 'aborted' ) );
 				$objWorksheet->setCellValue ( 'D'.$rowCount , null );
 				$objWorksheet->setCellValue ( 'E'.$rowCount , null );
 				$objWorksheet->setCellValue ( 'F'.$rowCount , null );
@@ -310,20 +310,20 @@ class ilTestStatisticsExportPlugin extends ilTestExportPlugin {
 		$maxColumn ++;
 		
 		//Auswertungstabellenbeschriftung
-		$objWorksheet->setCellValue ( 'B'.($lastRowOfRawData+3) , 'Spaltensumme');
-		$objWorksheet->setCellValue ( 'B'.($lastRowOfRawData+4) , 'Summenprodukt');
+		$objWorksheet->setCellValue ( 'B'.($lastRowOfRawData+3) , $this->txt ( 'column_sum' ));
+		$objWorksheet->setCellValue ( 'B'.($lastRowOfRawData+4) , $this->txt ( 'sumproduct' ));
 		
 		
-		$objWorksheet->setCellValue ( 'B'.($lastRowOfRawData+6) , 'Erreichbare Punktzahl' );
-		$objWorksheet->setCellValue ( 'B'.($lastRowOfRawData+7) , 'Richtige Antworten' );
-		$objWorksheet->setCellValue ( 'B'.($lastRowOfRawData+8) , 'Falsche Antworten' );
-		$objWorksheet->setCellValue ( 'B'.($lastRowOfRawData+9) , 'Unbeantwortet' );
+		$objWorksheet->setCellValue ( 'B'.($lastRowOfRawData+6) , $this->txt ( 'reachable_points' ) );
+		$objWorksheet->setCellValue ( 'B'.($lastRowOfRawData+7) , $this->txt ( 'correct' ) );
+		$objWorksheet->setCellValue ( 'B'.($lastRowOfRawData+8) , $this->txt ( 'wrong' ) );
+		$objWorksheet->setCellValue ( 'B'.($lastRowOfRawData+9) , $this->txt ( 'not_answered' ) );
 		
-		$objWorksheet->setCellValue ( 'B'.($lastRowOfRawData+11) , 'Mittelwert');
-		$objWorksheet->setCellValue ( 'B'.($lastRowOfRawData+12) , 'Varianz' );
-		$objWorksheet->setCellValue ( 'B'.($lastRowOfRawData+13) , 'Standardabweichung' );
-		$objWorksheet->setCellValue ( 'B'.($lastRowOfRawData+14) , 'Schwierigkeitsindex' );
-		$objWorksheet->setCellValue ( 'B'.($lastRowOfRawData+15) , 'Trennschärfe' );
+		$objWorksheet->setCellValue ( 'B'.($lastRowOfRawData+11) , $this->txt ( 'mean' ));
+		$objWorksheet->setCellValue ( 'B'.($lastRowOfRawData+12) , $this->txt ( 'variance' ) );
+		$objWorksheet->setCellValue ( 'B'.($lastRowOfRawData+13) , $this->txt ( 'std_deviation' ) );
+		$objWorksheet->setCellValue ( 'B'.($lastRowOfRawData+14) , $this->txt ( 'difficultyindex' ) );
+		$objWorksheet->setCellValue ( 'B'.($lastRowOfRawData+15) , $this->txt ( 'item_total_correlation' ) );
 		//$objWorksheet->setCellValue ( 'B'.($lastRowOfRawData+16) , 'Trennschärfe ohne Itemkorrektur' );
 		
 		
