@@ -292,6 +292,20 @@ class ilTestStatisticsExportPlugin extends ilTestExportPlugin {
 		$lastRowOfRawData = $objWorksheet->getHighestRow ();
 		$lastColumnRawData = $objWorksheet->getHighestColumn();
 
+		$styleGreen  =  array(
+				'fill' => array(
+						'type' => PHPExcel_Style_Fill::FILL_SOLID,
+						'color' => array('rgb' => '00FF00')
+				)
+		);
+		
+		$styleRed  =  array(
+				'fill' => array(
+						'type' => PHPExcel_Style_Fill::FILL_SOLID,
+						'color' => array('rgb' => 'FF0000')
+				)
+		);
+		
 		$maxColumn = $lastColumnRawData;
 		$maxColumn ++;
 		
@@ -310,7 +324,7 @@ class ilTestStatisticsExportPlugin extends ilTestExportPlugin {
 		$objWorksheet->setCellValue ( 'B'.($lastRowOfRawData+13) , 'Standardabweichung' );
 		$objWorksheet->setCellValue ( 'B'.($lastRowOfRawData+14) , 'Schwierigkeitsindex' );
 		$objWorksheet->setCellValue ( 'B'.($lastRowOfRawData+15) , 'Trennschärfe' );
-		$objWorksheet->setCellValue ( 'B'.($lastRowOfRawData+16) , 'Trennschärfe (Itemkorrigiert)' );
+		//$objWorksheet->setCellValue ( 'B'.($lastRowOfRawData+16) , 'Trennschärfe ohne Itemkorrektur' );
 		
 		
 		for($column = 'C'; $column != ($maxColumn); $column ++) {
@@ -396,6 +410,11 @@ class ilTestStatisticsExportPlugin extends ilTestExportPlugin {
 			
 			} else {
 				$objWorksheet->setCellValue ( $column.($lastRowOfRawData+14) , '=100*(SUM(' . $column . '7:' . $column . ($lastRowOfRawData) . ')/' . (($anzahlTeilnehmer - $countNotShown) * $maxPoints) . ')' );
+				if ($objWorksheet->getCell ( $column.($lastRowOfRawData+14) )->getCalculatedValue () < 20 || $objWorksheet->getCell ( $column.($lastRowOfRawData+14) )->getCalculatedValue () > 80) {
+					$objWorksheet->getStyle($column.($lastRowOfRawData+14))->applyFromArray($styleRed);
+				} else {
+					$objWorksheet->getStyle($column.($lastRowOfRawData+14))->applyFromArray($styleGreen);
+				}
 			}
 		}
 	}
@@ -524,6 +543,21 @@ class ilTestStatisticsExportPlugin extends ilTestExportPlugin {
 	public function calculateDiscrimationIndex(&$objPHPExcel){
 		$firstSheet = $objPHPExcel->getSheet(0);
 		
+		$styleGreen  =  array(
+        	'fill' => array(
+            'type' => PHPExcel_Style_Fill::FILL_SOLID,
+            'color' => array('rgb' => '00FF00')
+       		)	
+    	);
+		
+		$styleRed  =  array(
+				'fill' => array(
+						'type' => PHPExcel_Style_Fill::FILL_SOLID,
+						'color' => array('rgb' => 'FF0000')
+				)
+		);
+		
+		
 		/*
 		 * Alte Trennschärfe, mit Excelfunktionen, fehleranfällig
 		*/
@@ -574,12 +608,7 @@ class ilTestStatisticsExportPlugin extends ilTestExportPlugin {
 			$firstSheet->setCellValue ( $column.($endzeile) , '=(((' . $summenwert . '/' . $column . ($anzahlTeilnehmer + 13) . ')-' . $durchschnittGesamt_TrueFalse .')/' . $stdAbwGes . ')*' . '(sqrt(' .  $column . ($anzahlTeilnehmer + 13) . '/(' . $anzahlTeilnehmer . '-' .$column . ($anzahlTeilnehmer + 15) . '-' . $column . ($anzahlTeilnehmer + 13) . ')))');
 		}
 		*/
-		
-		
-		
-		
-		
-		
+
 		/*
 		 *
 		 * Pearson Correlation
@@ -610,11 +639,50 @@ class ilTestStatisticsExportPlugin extends ilTestExportPlugin {
 					$itemkorrigierterGesamttestwert = $gesamttestwert - $value;
 
 					$array_test[] = $itemkorrigierterGesamttestwert;
-					$array_test_unkorrigiert[] = $gesamttestwert;
+					//Nur für unkorrigierten Pearson Vanilla
+					//$array_test_unkorrigiert[] = $gesamttestwert;
 						
 				}
 			}
+			
+			//############## Pearson Itemkorrigiert:
+			
+			$length= count($array_item);
+			$mean1=array_sum($array_item) / $length;
+			$mean2=array_sum($array_test) / $length;
+				
+			$a=0;
+			$b=0;
+			$axb=0;
+			$a2=0;
+			$b2=0;
+				
+			for($i=0;$i<$length;$i++)
+			{
+			$a=$array_item[$i]-$mean1;
+			$b=$array_test[$i]-$mean2;
+			$axb=$axb+($a*$b);
+			$a2=$a2+ pow($a,2);
+			$b2=$b2+ pow($b,2);
+			}
+				
+			if ($a2 == 0 || $b2 == 0){
+			$corr = "NaN";
+			} else {
+				$corr= $axb / sqrt($a2*$b2);
+			}
+					
+			//error_log($axb .' / ' . 'sqrt(' . $a2 . '*' . $b2 . ')');
+					
+			$firstSheet->setCellValue ( $column.($endzeile) , $corr);
+				
+			if ($corr < 0.3) {
+				$firstSheet->getStyle($column.($endzeile))->applyFromArray($styleRed);
+			} else {
+				$firstSheet->getStyle($column.($endzeile))->applyFromArray($styleGreen);
+			}
 
+			/*
 			//############## Pearson vanilla:
 				
 			$length= count($array_item);
@@ -645,42 +713,9 @@ class ilTestStatisticsExportPlugin extends ilTestExportPlugin {
 					
 				//error_log($axb .' / ' . 'sqrt(' . $a2 . '*' . $b2 . ')');
 					
-			$firstSheet->setCellValue ( $column.($endzeile) , $corr);
-				
-			//############## Itemkorrigiert:
-			
-			
-			
-			
-			$length= count($array_item);
-			$mean1=array_sum($array_item) / $length;
-			$mean2=array_sum($array_test) / $length;
-			
-			$a=0;
-			$b=0;
-			$axb=0;
-			$a2=0;
-			$b2=0;
-			
-			for($i=0;$i<$length;$i++)
-			{
-			$a=$array_item[$i]-$mean1;
-			$b=$array_test[$i]-$mean2;
-			$axb=$axb+($a*$b);
-			$a2=$a2+ pow($a,2);
-			$b2=$b2+ pow($b,2);
-			}
-			
-			if ($a2 == 0 || $b2 == 0){
-				$corr = "NaN";
-			} else {
-				$corr= $axb / sqrt($a2*$b2);
-				
-			}
-			
-			//error_log($axb .' / ' . 'sqrt(' . $a2 . '*' . $b2 . ')');
-			
 			$firstSheet->setCellValue ( $column.($endzeile+1) , $corr);
+			*/	
+
 			
 		}		
 	}
