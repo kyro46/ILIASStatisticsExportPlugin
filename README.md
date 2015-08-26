@@ -7,7 +7,7 @@
 ### Usage ###
 
 Install the plugin to
- Customizing/global/plugins/Modules/TestExport
+ Customizing/global/plugins/Modules/Test/Export
 
 and activate it in the ILIAS-Admin-GUI.
 
