@@ -363,7 +363,10 @@ class ilTestStatisticsExportPlugin extends ilTestExportPlugin {
 		
 						if ($titleFromSheet === $titelFromObject) {
 							$cell = $objWorksheet->getCell( $column . ($lastRowOfRawData+6));
-							$cell->setValue ( $question_data ["points"] );	
+							
+							if ($question_data ["points"] != null && $question_data ["points"] != '') {
+								$cell->setValue ( $question_data ["points"] );	
+							}
 						}
 					}
 				}
@@ -632,7 +635,7 @@ class ilTestStatisticsExportPlugin extends ilTestExportPlugin {
 				$value = $firstSheet->getCell( $column.$row )->getValue();
 
 				if (!($value === null) && !($value === '') && is_numeric($firstSheet->getCell( 'C'.$row )->getValue())) {
-					error_log($value . ' inner ' . $column.$row);
+					//error_log($value . ' inner ' . $column.$row);
 					$array_item[] = $value;
 					
 					$gesamttestwert = $firstSheet->getCell( 'C'.$row )->getValue();
